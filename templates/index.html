@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto text-center">
+        <h1 class="display-4">Система анализа сметных данных</h1>
+        <p class="lead">Расчет нормативов расхода строительных материалов на 1 квадратный метр</p>
+        <hr class="my-4">
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="fas fa-upload fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Загрузка смет</h5>
+                <p class="card-text">Загрузите Excel-файлы со сметами, укажите тип объекта и площадь</p>
+                <a href="{{ url_for('upload') }}" class="btn btn-primary">Загрузить</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="fas fa-cubes fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Классификация</h5>
+                <p class="card-text">Отнесите сметные позиции к строительным материалам</p>
+                <a href="{{ url_for('materials') }}" class="btn btn-success">Классифицировать</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-3x text-info mb-3"></i>
+                <h5 class="card-title">Анализ и прогноз</h5>
+                <p class="card-text">Получите статистику расхода материалов и прогноз потребности</p>
+                <a href="{{ url_for('analysis') }}" class="btn btn-info text-white">Анализировать</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <i class="fas fa-info-circle"></i> Как это работает
+            </div>
+            <div class="card-body">
+                <ol>
+                    <li><strong>Загрузите смету</strong> в формате Excel (XLSX)</li>
+                    <li><strong>Укажите характеристики объекта</strong>: тип, площадь, год строительства</li>
+                    <li><strong>Классифицируйте материалы</strong> — отнесите каждую позицию к нужному материалу</li>
+                    <li><strong>Выполните анализ</strong> — система рассчитает расход на 1 м², средние значения и вероятность использования</li>
+                    <li><strong>Сформируйте прогноз</strong> — рассчитайте потребность в материалах для планируемых объектов</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

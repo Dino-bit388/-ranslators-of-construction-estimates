@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2><i class="fas fa-chart-line"></i> Прогноз потребности в материалах</h2>
+
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-plus-circle"></i> Новый прогноз
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('calculate_forecast') }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Тип объекта</label>
+                            <select name="object_type_id" class="form-select" required>
+                                <option value="">Выберите...</option>
+                                {% for ot in object_types %}
+                                <option value="{{ ot.id }}">{{ ot.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Наименование объекта</label>
+                            <input type="text" name="object_name" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Площадь одного объекта (м²)</label>
+                            <input type="number" step="0.01" name="planned_area" class="form-control" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Количество объектов</label>
+                            <input type="number" name="quantity" class="form-control" required value="1">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Год ввода</label>
+                            <input type="number" name="year" class="form-control" required value="2025">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Показатель расхода</label>
+                            <select name="selected_stat" class="form-select">
+                                <option value="mean">Среднее арифметическое</option>
+                                <option value="median">Медиана</option>
+                                <option value="mode">Мода</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-chart-line"></i> Рассчитать прогноз
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-dark text-white">
+        <i class="fas fa-history"></i> Выполненные прогнозы
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Год</th>
+                        <th>Объект</th>
+                        <th>Материал</th>
+                        <th>Вероятность</th>
+                        <th>Прогнозная потребность</th>
+                        <th>Ед. изм.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for forecast in forecasts %}
+                    <tr>
+                        <td>{{ forecast.year }}</td>
+                        <td>{{ forecast.object_name }}</td>
+                        <td>{{ forecast.group_name }} / {{ forecast.subtype_name }}</td>
+                        <td>{{ forecast.probability }}%</td>
+                        <td>{{ "%.2f"|format(forecast.forecast_quantity) }}</td>
+                        <td>{{ forecast.base_unit_name }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">Нет выполненных прогнозов</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

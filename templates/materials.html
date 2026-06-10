@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2><i class="fas fa-cubes"></i> Классификация материалов</h2>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <i class="fas fa-exclamation-triangle"></i> Позиции, требующие классификации
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Смета</th>
+                                <th>Наименование позиции</th>
+                                <th>Ед. изм.</th>
+                                <th>Количество</th>
+                                <th>Классификация</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ item.file_name }}</td>
+                                <td>{{ item.original_name[:80] }}{% if item.original_name|length > 80 %}...{% endif %}</td>
+                                <td>{{ item.unit_original or '-' }}</td>
+                                <td>{{ item.quantity_original }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('classify_material') }}" class="d-flex gap-2">
+                                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                                        <select name="subtype_id" class="form-select form-select-sm" style="width: auto;" required>
+                                            <option value="">Выберите материал...</option>
+                                            {% for subtype in subtypes %}
+                                            <option value="{{ subtype.id }}">
+                                                {{ subtype.group_name }} / {{ subtype.type_name }} / {{ subtype.name }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-success">
+                                    <i class="fas fa-check-circle"></i> Все позиции классифицированы
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <i class="fas fa-plus-circle"></i> Добавить новый материал
+            </div>
+            <div class="card-body">
+                <form method="POST" action="#">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" placeholder="Группа (бетон, металл...)" name="group_name">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" placeholder="Вид (арматура, бетон...)" name="type_name">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" placeholder="Частный вид (А500С Ø12...)" name="subtype_name">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-save"></i> Добавить
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

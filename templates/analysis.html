@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2><i class="fas fa-chart-bar"></i> Анализ расхода материалов</h2>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('calculate_analysis') }}" class="row g-3">
+                    <div class="col-md-10">
+                        <select name="object_type_id" class="form-select" required>
+                            <option value="">Выберите тип объекта для анализа</option>
+                            {% for ot in object_types %}
+                            <option value="{{ ot.id }}">{{ ot.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-calculator"></i> Анализ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-chart-line"></i> Средний расход материалов
+            </div>
+            <div class="card-body">
+                <canvas id="consumptionChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-percent"></i> Вероятность использования
+            </div>
+            <div class="card-body">
+                <canvas id="probabilityChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-dark text-white">
+        <i class="fas fa-table"></i> Детальные результаты
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Тип объекта</th>
+                        <th>Группа</th>
+                        <th>Вид</th>
+                        <th>Материал</th>
+                        <th>Вероятность</th>
+                        <th>Средний расход</th>
+                        <th>Медиана</th>
+                        <th>Выборка</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result.object_type_name }}</td>
+                        <td>{{ result.group_name }}</td>
+                        <td>{{ result.type_name }}</td>
+                        <td>{{ result.subtype_name }}</td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-info" style="width: {{ result.probability }}%;">
+                                    {{ result.probability }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ "%.4f"|format(result.mean) if result.mean else '-' }}</td>
+                        <td>{{ "%.4f"|format(result.median) if result.median else '-' }}</td>
+                        <td>{{ result.sample_count }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center">Нет данных. Выполните анализ.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const resultsData = {{ results_json | safe }};
+</script>
+{% endblock %}
