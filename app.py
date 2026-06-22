@@ -12,7 +12,7 @@ from datetime import datetime
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'my-secret-key-2026-for-smet-analyzer'  # Добавьте эту строку
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'xlsx'}
