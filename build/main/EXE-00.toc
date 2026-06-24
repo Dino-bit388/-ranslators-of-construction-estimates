@@ -3,8 +3,8 @@
  False,
  False,
  False,
- 'C:\\Users\\Ирина '
- 'Петровна\\AppData\\Roaming\\Python\\Python314\\site-packages\\PyInstaller\\bootloader\\images\\icon-windowed.ico',
+ ['C:\\Users\\Ирина '
+  'Петровна\\Desktop\\smet_analyzer\\smet_analyzer\\Group-2-_3_.ico'],
  None,
  False,
  False,
@@ -6628,7 +6628,7 @@
  [],
  False,
  False,
- 1782268396,
+ 1782271218,
  [('runw.exe',
    'C:\\Users\\Ирина '
    'Петровна\\AppData\\Roaming\\Python\\Python314\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\runw.exe',
