@@ -8,8 +8,9 @@ from psycopg2.extras import RealDictCursor
 from werkzeug.utils import secure_filename
 import json
 from datetime import datetime
+from openpyxl import load_workbook
 import sys
-import webview
+import re
 
 load_dotenv()
 
@@ -30,7 +31,173 @@ app = Flask(
 app.secret_key = 'my-secret-key-2026-for-smet-analyzer' 
 
 UPLOAD_FOLDER = 'uploads'
+
 ALLOWED_EXTENSIONS = {'xlsx'}
+
+HEADER_PATTERNS = {
+
+    "material": [
+        "наименование",
+        "наименование работ",
+        "наименование ресурса",
+        "материал",
+        "ресурс"
+    ],
+
+    "unit": [
+        "ед",
+        "ед.",
+        "ед изм",
+        "ед. изм",
+        "единица",
+        "единица измерения",
+        "изм"
+    ],
+
+    "quantity": [
+        "кол",
+        "кол-во",
+        "количество",
+        "объем",
+        "объём"
+    ],
+
+    "price": [
+        "стоимость",
+        "цена"
+    ]
+}
+
+UNIT_ALIASES = {
+    "м2": {
+        "м2",
+        "м²",
+        "кв м",
+        "кв метр",
+        "квадратный метр",
+        "квадратных метров"
+    },
+
+    "м3": {
+        "м3",
+        "м³",
+        "куб м",
+        "кубометр",
+        "кубический метр",
+        "кубических метров"
+    },
+
+    "м": {
+        "м",
+        "метр",
+        "метров"
+    },
+
+    "пог.м": {
+        "п м",
+        "пог м",
+        "погонный метр",
+        "погонных метров"
+    },
+
+    "мм": {
+        "мм",
+        "миллиметр",
+        "миллиметров"
+    },
+
+    "см": {
+        "см",
+        "сантиметр",
+        "сантиметров"
+    },
+
+    "т": {
+        "т",
+        "тонна",
+        "тонн"
+    },
+
+    "кг": {
+        "кг",
+        "килограмм",
+        "килограммов"
+    },
+
+    "г": {
+        "г",
+        "гр",
+        "грамм",
+        "граммов"
+    },
+
+    "л": {
+        "л",
+        "литр",
+        "литров"
+    },
+
+    "шт": {
+        "шт",
+        "штук",
+        "штука",
+        "штуки"
+    },
+
+    "компл": {
+        "компл",
+        "комплект",
+        "комплекта",
+        "комплектов"
+    },
+
+    "упак": {
+        "уп",
+        "упак",
+        "упаковка",
+        "упаковок"
+    },
+
+    "рулон": {
+        "рулон",
+        "рулонов"
+    },
+
+    "лист": {
+        "лист",
+        "листа",
+        "листов"
+    },
+
+    "час": {
+        "час",
+        "ч",
+        "часов"
+    },
+
+    "смена": {
+        "смена",
+        "смен"
+    },
+
+    "сут": {
+        "сут",
+        "сутки"
+    },
+
+    "%": {
+        "процент",
+        "процентов",
+        "%"
+    }
+}
+
+UNIT_MAP = {}
+
+for standard, aliases in UNIT_ALIASES.items():
+    for alias in aliases:
+        UNIT_MAP[alias] = standard
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -68,6 +235,63 @@ def estimates():
     cur.close()
     conn.close()
     return render_template('estimates.html', estimates=estimates)
+
+def normalize(text):
+
+    if text is None:
+        return ""
+
+    text = str(text).lower()
+
+    text = text.replace("ё", "е")
+
+    text = re.sub(r"[^\w\s]", " ", text)
+
+    text = " ".join(text.split())
+
+    return text
+
+def normalize_unit(unit):
+   if not unit:
+        return ""
+
+   original = str(unit)
+   
+   unit = normalize(unit)
+
+   result = UNIT_MAP.get(unit)
+
+   if result:
+    return result
+
+   logging.warning(
+     f"Неизвестная единица измерения: '{original}' -> '{unit}'"
+    )
+
+   return unit
+
+def parse_number(value):
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    value = str(value).strip().lower()
+
+    if value in {"", "-", "—", "–", "нет", "н/д", "nan"}:
+        return None
+
+    value = re.sub(r"[\s\xa0\u202f]", "", value)
+
+    value = value.replace(",", ".")
+
+    value = re.sub(r"[^0-9.\-]", "", value)
+
+    try:
+        return float(value)
+    except ValueError:
+        return None
 
 @app.route('/estimates/delete/<int:doc_id>', methods=['POST'])
 def delete_estimate(doc_id):
@@ -135,28 +359,22 @@ def upload():
             doc_id = cur.fetchone()['id']
             
             try:
-                df = pd.read_excel(filepath)
+                workB = load_workbook(filepath)
+                logging.info(f"Листы: {workB.sheetnames}")
+                for sheet_name in workB.sheetnames:
+                    logging.info(f"Обработка листа: {sheet_name}")
+
                 material_col = None
                 quantity_col = None
                 unit_col = None
-                
-                for col in df.columns:
-                    col_lower = str(col).lower()
-                    if 'наименован' in col_lower or 'материал' in col_lower or 'ресурс' in col_lower:
-                        material_col = col
-                    if 'количеств' in col_lower or 'объем' in col_lower or 'кол-во' in col_lower:
-                        quantity_col = col
-                    if 'ед.изм' in col_lower or 'единиц' in col_lower or 'ед изм' in col_lower or 'ед.' in col_lower:
-                        unit_col = col
-                
-                if material_col is None or quantity_col is None:
-                    raise Exception("Не удалось определить колонки с наименованиями или количествами")
+                if header_info["unit_col"] is not None:
+                    unit_col = df.columns[header_info["unit_col"]]
                 
                 items_inserted = 0
                 for idx, row in df.iterrows():
-                    material_name = str(row[material_col]) if pd.notna(row[material_col]) else None
-                    quantity = float(row[quantity_col]) if pd.notna(row[quantity_col]) else None
-                    unit = str(row[unit_col]) if unit_col and pd.notna(row[unit_col]) else None
+                    material_name = normalize(row[material_col]) if pd.notna(row[material_col]) else None
+                    quantity = parse_number(row[quantity_col]) if pd.notna(row[quantity_col]) else None
+                    unit = normalize_unit(row[unit_col]) if unit_col is not None and pd.notna(row[unit_col]) else ""
                     
                     if material_name and material_name != 'nan' and quantity and quantity > 0:
                         cur.execute('''
@@ -192,6 +410,61 @@ def upload():
     conn.close()
     
     return render_template('upload.html', object_types=object_types, work_types=work_types)
+
+def find_table_header(df):
+
+    max_rows = min(len(df), 40)
+
+    for row_index in range(max_rows):
+
+        row = df.iloc[row_index]
+
+        result = {
+            "header_row": row_index,
+            "material_col": None,
+            "unit_col": None,
+            "quantity_col": None,
+            "price_col": None
+        }
+
+        for col_index, cell in enumerate(row):
+
+            if pd.isna(cell):
+                continue
+
+            cell = normalize(cell)
+
+            for field, variants in HEADER_PATTERNS.items():
+
+                for variant in variants:
+
+                    if variant in cell:
+
+                        if result[field + "_col"] is None:
+                            result[field + "_col"] = col_index
+
+                        break
+
+        logging.info(
+            f"Строка {row_index}: "
+            f"material={result['material_col']} "
+            f"unit={result['unit_col']} "
+            f"quantity={result['quantity_col']}"
+        )
+
+        if (
+            result["material_col"] is not None
+            and result["unit_col"] is not None
+            and result["quantity_col"] is not None
+        ):
+
+            logging.info(
+                f"Найдена строка заголовков: {row_index}"
+            )
+
+            return result
+
+    return None
 
 @app.route('/materials')
 def materials():
