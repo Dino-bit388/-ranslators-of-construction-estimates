@@ -359,44 +359,62 @@ def upload():
             doc_id = cur.fetchone()['id']
             
             try:
-                workB = load_workbook(filepath)
-                logging.info(f"Листы: {workB.sheetnames}")
-                for sheet_name in workB.sheetnames:
-                    logging.info(f"Обработка листа: {sheet_name}")
+                work_book = load_workbook(filepath)
+                logging.info(f"Листы: {work_book.sheetnames}")
 
-                material_col = None
-                quantity_col = None
-                unit_col = None
-                if header_info["unit_col"] is not None:
-                    unit_col = df.columns[header_info["unit_col"]]
-                
-                items_inserted = 0
-                for idx, row in df.iterrows():
-                    material_name = normalize(row[material_col]) if pd.notna(row[material_col]) else None
-                    quantity = parse_number(row[quantity_col]) if pd.notna(row[quantity_col]) else None
-                    unit = normalize_unit(row[unit_col]) if unit_col is not None and pd.notna(row[unit_col]) else ""
+                for sheet_name in work_book.sheetnames:
+                    logging.info(f"Обработка листа: {sheet_name}")
+                    work_sheet = work_book[sheet_name]                    
+
+                    header_info = find_table_header(work_sheet)
+                    if header_info is None:
+                        logging.warning(f"На листе '{sheet_name}' заголовок не найден")
+                        continue
                     
-                    if material_name and material_name != 'nan' and quantity and quantity > 0:
-                        cur.execute('''
-                            INSERT INTO estimate_items (document_id, original_name, unit_original, quantity_original, row_number)
-                            VALUES (%s, %s, %s, %s, %s)
-                        ''', (doc_id, material_name[:500], unit, quantity, idx + 1))
-                        items_inserted += 1
-                
-                cur.execute('UPDATE estimate_documents SET total_items = %s, status = %s WHERE id = %s', 
-                           (items_inserted, 'parsed', doc_id))
-                conn.commit()
-                flash(f'Смета успешно загружена. Обработано {items_inserted} позиций.', 'success')
-                
+                    items_inserted = 0
+                    for idx, row in enumerate(work_sheet.iter_rows(
+                        min_row = header_info["header_row"] + 1,
+                        values_only = True),
+                        start = header_info['header_row'] + 1):
+
+                        if not any(value is not None for value in row):
+                            continue
+
+                        raw_material = row[header_info["material_col"] - 1]
+                        raw_unit = row[header_info["unit_col"] - 1]
+                        raw_quantity = row[header_info["quantity_col"] - 1]
+                        raw_price = row[header_info["price_col"] - 1]
+
+                        if raw_material is None:
+                            continue
+
+                        material = normalize(raw_material)
+                        quantity = parse_number(raw_unit)
+                        unit = normalize_unit(raw_quantity)
+                        price = parse_number(raw_price)
+                        
+
+                        if material is not None and quantity is not None and quantity > 0:
+                            cur.execute('''
+                                INSERT INTO estimate_items (document_id, original_name, unit_original, quantity_original, row_number)
+                                VALUES (%s, %s, %s, %s, %s)
+                            ''', (doc_id, material[:500], unit, quantity, idx))
+                            items_inserted += 1
+                    
+                    cur.execute('UPDATE estimate_documents SET total_items = %s, status = %s WHERE id = %s', 
+                            (items_inserted, 'parsed', doc_id))
+                    conn.commit()
+                    flash(f'Смета успешно загружена. Обработано {items_inserted} позиций.', 'success')
+                    
             except Exception as e:
-                conn.rollback()
-                cur.execute('UPDATE estimate_documents SET status = %s WHERE id = %s', ('error', doc_id))
-                conn.commit()
-                flash(f'Ошибка при парсинге файла: {str(e)}', 'error')
-                logging.error(f"Parse error for {filename}: {str(e)}")
+                    conn.rollback()
+                    cur.execute('UPDATE estimate_documents SET status = %s WHERE id = %s', ('error', doc_id))
+                    conn.commit()
+                    flash(f'Ошибка при парсинге файла: {str(e)}', 'error')
+                    logging.error(f"Parse error for {filename}: {str(e)}")
             finally:
-                cur.close()
-                conn.close()
+                    cur.close()
+                    conn.close()
             
             return redirect(url_for('estimates'))
     
@@ -411,16 +429,18 @@ def upload():
     
     return render_template('upload.html', object_types=object_types, work_types=work_types)
 
-def find_table_header(df):
+def find_table_header(ws):
 
-    max_rows = min(len(df), 40)
+    max_rows = min(ws.max_row, 40)
 
     for row_index in range(max_rows):
 
-        row = df.iloc[row_index]
+        row = [
+            cell.value
+            for cell in ws[row_index + 1] ]
 
         result = {
-            "header_row": row_index,
+            "header_row": row_index + 1,
             "material_col": None,
             "unit_col": None,
             "quantity_col": None,
@@ -429,7 +449,7 @@ def find_table_header(df):
 
         for col_index, cell in enumerate(row):
 
-            if pd.isna(cell):
+            if cell is None:
                 continue
 
             cell = normalize(cell)
