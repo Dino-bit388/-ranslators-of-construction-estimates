@@ -393,6 +393,7 @@ def upload():
                         unit = normalize_unit(raw_quantity)
                         price = parse_number(raw_price)
                         
+                        
 
                         if material is not None and quantity is not None and quantity > 0:
                             cur.execute('''
