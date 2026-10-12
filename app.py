@@ -8,11 +8,26 @@ from psycopg2.extras import RealDictCursor
 from werkzeug.utils import secure_filename
 import json
 from datetime import datetime
+import sys
+import webview
 
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = 'my-secret-key-2026-for-smet-analyzer'  # Добавьте эту строку
+if getattr(sys, 'frozen', False):
+    base_dir = sys._MEIPASS
+else:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+template_path = os.path.join(base_dir, 'templates')
+static_path = os.path.join(base_dir, 'static')
+
+app = Flask(
+    __name__,
+    template_folder = template_path,
+    static_folder = static_path
+)
+app.secret_key = 'my-secret-key-2026-for-smet-analyzer' 
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'xlsx'}
@@ -497,4 +512,5 @@ def calculate_forecast():
     return redirect(url_for('forecast'))
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run()   
+   
